@@ -71,11 +71,18 @@ def init():
             for t in items: c.execute('INSERT INTO titles(title,slug,description,genre,kind,year,runtime,age_rating,language,poster,backdrop,featured,premium,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(*t,now()))
         if not c.execute('SELECT id FROM news LIMIT 1').fetchone():
             c.execute('INSERT INTO news(title,body,cover,premium,created_at) VALUES (?,?,?,?,?)',('A new chapter starts here','Welcome to Agasobanuye1. This is your space for cinema, entertainment, and stories that stay with you. Check back for official updates and new releases.','/assets/hero.jpg',0,now()))
-        if not c.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone():
-            email=os.environ.get('ADMIN_EMAIL','admin@agasobanuye1.local').lower(); password=os.environ.get('ADMIN_PASSWORD') or secrets.token_urlsafe(15)
+                env_email = os.environ.get('ADMIN_EMAIL','').strip().lower()
+        env_password = os.environ.get('ADMIN_PASSWORD','').strip()
+        existing_admin = c.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
+        if not existing_admin:
+            email = env_email or 'admin@agasobanuye1.local'
+            password = env_password or secrets.token_urlsafe(15)
             c.execute('INSERT INTO users(name,email,password_hash,role,created_at) VALUES (?,?,?,?,?)',('Administrator',email,generate_password_hash(password),'admin',now()))
-            print('\n'+'='*55+'\nFIRST-RUN ADMIN LOGIN\nEmail: '+email+'\nPassword: '+password+'\nSave this now; change it after signing in.\n'+'='*55+'\n',flush=True)
-
+            print('\n'+'='*55+'\nFIRST-RUN ADMIN LOGIN\nEmail: '+email+'\nPassword: '+password+'\n'+'='*55+'\n',flush=True)
+        else:
+            if env_email and env_password:
+                c.execute("UPDATE users SET email=?, password_hash=? WHERE role='admin'",(env_email, generate_password_hash(env_password)))
+                print(f"\n=== ADMIN UPDATED to {env_email} ===\n", flush=True)
 @app.get('/')
 def index(): return send_from_directory('public','index.html')
 @app.get('/api/bootstrap')
